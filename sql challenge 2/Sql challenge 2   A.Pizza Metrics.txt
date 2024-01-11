@@ -1,0 +1,137 @@
+                                              A.Pizza Metrics
+1.How many pizzas were ordered?
+Ans.
+SET search_path to pizza_runner;
+select Count(pizza_id) as NumberOfOrders
+From customer_orders;
+
+
+2.How many unique customer orders were made?
+Ans.
+SET search_path to pizza_runner;
+select Count(Distinct order_id) as DistinctNumberOfOrders
+From customer_orders;
+
+
+3.How many successful orders were delivered by each runner?
+Ans.
+SET search_path to pizza_runner;
+UPDATE runner_orders
+SET cancellation = NULL
+WHERE cancellation NOT IN ('Restaurant Cancellation', 'Customer Cancellation');
+
+SELECT runner_id, COUNT(order_id) as SuccessfulDeliveryPerRunner
+FROM runner_orders
+WHERE cancellation IS NULL
+GROUP BY runner_id
+ORDER BY runner_id;
+
+
+
+
+4.How many of each type of pizza was delivered?
+Ans.
+SET search_path to pizza_runner;
+
+SELECT 
+  pizza_id, 
+  COUNT(pizza_id) AS delivered_pizza_count
+FROM customer_orders
+Group By pizza_id
+Order By pizza_id;
+
+
+
+
+5.How many Vegetarian and Meatlovers were ordered by each customer?
+Ans.
+SET search_path to pizza_runner;
+SELECT
+  co.customer_id,
+  COUNT(CASE WHEN pn.pizza_name = 'Vegetarian' THEN 1 END) AS vegetarian_count,
+  COUNT(CASE WHEN pn.pizza_name = 'Meatlovers' THEN 1 END) AS meatlovers_count
+FROM
+  customer_orders co
+JOIN
+  pizza_names pn ON co.pizza_id = pn.pizza_id
+GROUP BY
+  co.customer_id
+Order BY
+  co.customer_id;
+
+
+
+6.What was the maximum number of pizzas delivered in a single order?
+Ans.
+SET search_path to pizza_runner;
+
+WITH pizza_count_cte AS
+(
+  SELECT 
+    c.order_id, 
+    COUNT(c.pizza_id) AS pizza_per_order
+  FROM customer_orders AS c
+  JOIN runner_orders AS r
+    ON c.order_id = r.order_id
+  WHERE r.distance IS NOT NULL
+  GROUP BY c.order_id
+)
+
+SELECT 
+  MAX(pizza_per_order) AS pizza_count
+FROM pizza_count_cte;
+
+
+
+7.For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
+Ans.
+SET search_path to pizza_runner;
+SELECT 
+  c.customer_id,
+  SUM(
+    CASE WHEN c.exclusions <> '' OR c.extras <> '' THEN 1
+    ELSE 0
+    END) AS at_least_1_change,
+  SUM(
+    CASE WHEN c.exclusions = '' AND c.extras = '' THEN 1 
+    ELSE 0
+    END) AS no_change
+FROM customer_orders AS c
+JOIN runner_orders AS r
+  ON c.order_id = r.order_id
+WHERE r.distance != '0'
+GROUP BY c.customer_id
+ORDER BY c.customer_id;
+
+8.How many pizzas were delivered that had both exclusions and extras?
+Ans.
+SET search_path to pizza_runner;
+SELECT 
+  COUNT(DISTINCT c.order_id) AS pizzas_with_exclusions_and_extras
+FROM customer_orders AS c
+JOIN runner_orders AS r ON c.order_id = r.order_id
+WHERE r.distance IS NOT NULL
+  AND r.cancellation IS NULL
+  AND c.exclusions IS NOT NULL
+  AND c.extras IS NOT NULL;
+
+
+9.What was the total volume of pizzas ordered for each hour of the day?
+Ans.
+SET search_path to pizza_runner;
+SELECT
+  EXTRACT(HOUR FROM order_time) AS hour_of_day,
+  COUNT(*) AS total_pizzas_ordered
+FROM customer_orders
+GROUP BY hour_of_day
+ORDER BY hour_of_day;
+
+10.What was the volume of orders for each day of the week?
+Ans.
+SET search_path to pizza_runner;
+SELECT
+  EXTRACT(DOW FROM order_time) AS day_of_week,
+  COUNT(*) AS total_orders
+FROM customer_orders
+GROUP BY day_of_week
+ORDER BY day_of_week;

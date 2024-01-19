@@ -1,0 +1,41 @@
+                                                            C. Ingredient Optimisation
+1.What are the standard ingredients for each pizza?
+Ans:
+SET search_path to pizza_runner;
+
+
+WITH pizza_details AS (
+  SELECT
+    n.pizza_name,
+    n.pizza_id,
+    r.toppings
+  FROM
+    pizza_names n
+    JOIN pizza_recipes r ON n.pizza_id = r.pizza_id
+)
+
+SELECT d.pizza_name, d.pizza_id, STRING_AGG(pt.topping_name, ', ') AS standard_ingredients
+FROM pizza_details d
+JOIN pizza_toppings pt ON pt.topping_id IN (SELECT UNNEST(STRING_TO_ARRAY(d.toppings, ', ')::INTEGER[]))
+GROUP BY d.pizza_name, d.pizza_id
+ORDER BY d.pizza_id;
+
+2.What was the most commonly added extra?
+ANS:
+SET search_path to pizza_runner;
+WITH toppings_cte AS (
+SELECT
+  pizza_id,
+  REGEXP_SPLIT_TO_TABLE(toppings, '[,\s]+')::INTEGER AS topping_id
+FROM pizza_runner.pizza_recipes)
+
+SELECT 
+  pt.topping_name, 
+  COUNT(t.topping_id) AS topping_count
+FROM toppings_cte t
+INNER JOIN pizza_runner.pizza_toppings pt
+  ON t.topping_id = pt.topping_id
+GROUP BY t.topping_id, pt.topping_name
+ORDER BY topping_count DESC;
+
+3.What was the most common exclusion?
